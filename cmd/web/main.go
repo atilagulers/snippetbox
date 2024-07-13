@@ -37,15 +37,9 @@ func main() {
 		snippets: &models.SnippetModel{DB: db},
 	}
 
-	srv := &http.Server{
-		Addr:     *addr,
-		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError),
-		Handler:  app.routes(),
-	}
+	logger.Info("starting server", "addr", *addr)
 
-	logger.Info("starting server", "addr", srv.Addr)
-
-	err = srv.ListenAndServe()
+	err = http.ListenAndServe(*addr, app.routes())
 	logger.Error(err.Error())
 	os.Exit(1)
 }
