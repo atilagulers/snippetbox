@@ -18,13 +18,13 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 
 	ts, err := template.ParseFiles(files...)
 	if err != nil {
-		app.serverError(w, err)
+		app.serverError(w, r, err)
 		return
 	}
 
 	err = ts.ExecuteTemplate(w, "base", nil)
 	if err != nil {
-		app.serverError(w, err)
+		app.serverError(w, r, err)
 	}
 }
 
@@ -40,10 +40,22 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
 
-	w.Write([]byte("Display a form for creating a new snippet..."))
-}
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
 
-func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("Save a new snippet..."))
+	title := "O snail"
+	content := "O snail\nClimb Mount Fuji,\nBut slowly, slowly!\n\n– Kobayashi Issa"
+	expires := 7
+
+	id, err := app.snippets.Insert(title, content, expires)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
+
 }

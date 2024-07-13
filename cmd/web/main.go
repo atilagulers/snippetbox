@@ -3,16 +3,17 @@ package main
 import (
 	"database/sql"
 	"flag"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
 	_ "github.com/go-sql-driver/mysql"
+	"snippetbox.atilaguler.com/cmd/internal/models"
 )
 
 type application struct {
-	errorLog *log.Logger
-	infoLog  *log.Logger
+	logger   *slog.Logger
+	snippets *models.SnippetModel
 }
 
 func main() {
@@ -21,32 +22,32 @@ func main() {
 
 	flag.Parse()
 
-	// loggers
-	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
-	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	db, err := openDB(*dsn)
 	if err != nil {
-		errorLog.Fatal(err)
+		logger.Error(err.Error())
+		os.Exit(1)
 	}
 
 	defer db.Close()
 
 	app := &application{
-		errorLog: errorLog,
-		infoLog:  infoLog,
+		logger:   logger,
+		snippets: &models.SnippetModel{DB: db},
 	}
 
 	srv := &http.Server{
 		Addr:     *addr,
-		ErrorLog: errorLog,
+		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError),
 		Handler:  app.routes(),
 	}
 
-	infoLog.Printf("Starting server on %s", *addr)
+	logger.Info("starting server", "addr", srv.Addr)
 
 	err = srv.ListenAndServe()
-	errorLog.Fatal(err)
+	logger.Error(err.Error())
+	os.Exit(1)
 }
 
 func openDB(dsn string) (*sql.DB, error) {
